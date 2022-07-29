@@ -49,10 +49,8 @@ func (router Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		if route.IsPathEquals(r.URL.Path) {
 			params := route.GetPathParameters(r.URL.Path)
-			for key, value := range params {
-				withParamCtx := context.WithValue(r.Context(), key, value)
-				r = r.WithContext(withParamCtx)
-			}
+			withParamsCtx := context.WithValue(r.Context(), _paramsCtxKey, params)
+			r = r.WithContext(withParamsCtx)
 
 			route.handlerFn(w, r)
 			return

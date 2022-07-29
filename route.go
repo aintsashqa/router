@@ -32,22 +32,19 @@ func (r route) IsPathEquals(path string) bool {
 	return true
 }
 
-func (r route) GetPathParameters(path string) (result map[string]any) {
+func (r route) GetPathParameters(path string) Params {
 	currentPathParts := strings.Split(r.path, "/")
 	inputPathParts := strings.Split(path, "/")
 
+	result := Params{}
 	for i := 0; i < len(currentPathParts); i++ {
 		if !strings.HasPrefix(currentPathParts[i], ":") {
 			continue
 		}
 
-		if result == nil {
-			result = make(map[string]any)
-		}
-
 		key := strings.TrimPrefix(currentPathParts[i], ":")
-		result[key] = inputPathParts[i]
+		result.append(key, inputPathParts[i])
 	}
 
-	return
+	return result
 }

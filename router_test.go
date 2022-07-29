@@ -70,14 +70,10 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				path:   "/:parameter_key",
 				method: http.MethodGet,
 				handlerFn: func(w http.ResponseWriter, r *http.Request) {
-					value := r.Context().Value("parameter_key")
-					if value == nil {
-						http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-						return
-					}
+					params := ParamsFromContext(r.Context())
 
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("parameter_key:" + value.(string)))
+					w.Write([]byte("parameter_key:" + params.Get("parameter_key")))
 				},
 			},
 			response: struct {
