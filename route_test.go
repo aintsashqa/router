@@ -1,10 +1,11 @@
 package router
 
 import (
+	"strings"
 	"testing"
 )
 
-func TestRouteFuncIsPathEquals(t *testing.T) {
+func TestRouteFuncIsCurrentRoute(t *testing.T) {
 	testCases := []struct {
 		desc   string
 		path   string
@@ -39,9 +40,9 @@ func TestRouteFuncIsPathEquals(t *testing.T) {
 
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			route := route{path: tC.path}
+			route := newRoute(tC.path, "", nil)
 
-			result := route.IsPathEquals(tC.input)
+			result := route.IsCurrentRoute(strings.Split(tC.input, "/"))
 
 			if tC.result != result {
 				t.Errorf("expects result '%+v' but got '%+v'", tC.result, result)
@@ -83,9 +84,9 @@ func TestRouteFuncGetPathParameters(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			route := route{path: tC.path}
+			route := newRoute(tC.path, "", nil)
 
-			result := route.GetPathParameters(tC.input)
+			result := route.GetPathParameters(strings.Split(tC.input, "/"))
 
 			for key, expectValue := range tC.result {
 				actualValue, found := result[key]
