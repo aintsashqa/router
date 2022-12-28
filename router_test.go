@@ -97,7 +97,11 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				path      string
 				method    string
 				handlerFn http.HandlerFunc
-			}{},
+			}{
+				path:      "/",
+				method:    http.MethodPost,
+				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
+			},
 			response: struct {
 				status int
 				body   string

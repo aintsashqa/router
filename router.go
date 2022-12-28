@@ -42,23 +42,24 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 
 	for _, route := range router.routes {
-		if route.method != r.Method {
+		if !route.IsCurrentRoute(segments) {
 			continue
 		}
 
-		if route.IsCurrentRoute(segments) {
-			if len(route.segmentsKeys) == 0 {
-				route.handlerFn(w, r)
-				return
-			}
+		if route.method != r.Method {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
 
-			params := route.GetPathParameters(segments)
-			r = r.WithContext(context.WithValue(r.Context(), _paramsCtxKey, params))
-
+		if len(route.segmentsKeys) == 0 {
 			route.handlerFn(w, r)
 			return
 		}
-	}
 
-	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		params := route.GetPathParameters(segments)
+		r = r.WithContext(context.WithValue(r.Context(), _paramsCtxKey, params))
+
+		route.handlerFn(w, r)
+		return
+	}
 }
