@@ -15,9 +15,11 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			method string
 		}
 		route struct {
-			path      string
-			method    string
-			handlerFn http.HandlerFunc
+			path             string
+			method           string
+			handlerFn        http.HandlerFunc
+			notFound         http.HandlerFunc
+			methodNotAllowed http.HandlerFunc
 		}
 		response struct {
 			status int
@@ -34,9 +36,11 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				method: http.MethodGet,
 			},
 			route: struct {
-				path      string
-				method    string
-				handlerFn http.HandlerFunc
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
 			}{
 				path:   "/",
 				method: http.MethodGet,
@@ -63,9 +67,11 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				method: http.MethodGet,
 			},
 			route: struct {
-				path      string
-				method    string
-				handlerFn http.HandlerFunc
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
 			}{
 				path:   "/:parameter_key",
 				method: http.MethodGet,
@@ -85,7 +91,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			desc: "_failure_request_route_not_found",
+			desc: "_failure_request_route_not_found_default",
 			request: struct {
 				path   string
 				method string
@@ -94,9 +100,11 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				method: http.MethodGet,
 			},
 			route: struct {
-				path      string
-				method    string
-				handlerFn http.HandlerFunc
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
 			}{
 				path:      "/",
 				method:    http.MethodGet,
@@ -111,7 +119,39 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			},
 		},
 		{
-			desc: "_failure_request_method_not_allow",
+			desc: "_failure_request_route_not_found_custom",
+			request: struct {
+				path   string
+				method string
+			}{
+				path:   "/invalid_route",
+				method: http.MethodGet,
+			},
+			route: struct {
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
+			}{
+				path:      "/",
+				method:    http.MethodGet,
+				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
+				notFound: func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte("not_found_custom_handler"))
+				},
+			},
+			response: struct {
+				status int
+				body   string
+			}{
+				status: http.StatusNotFound,
+				body:   "not_found_custom_handler",
+			},
+		},
+		{
+			desc: "_failure_request_method_not_allow_default",
 			request: struct {
 				path   string
 				method string
@@ -120,9 +160,11 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				method: http.MethodGet,
 			},
 			route: struct {
-				path      string
-				method    string
-				handlerFn http.HandlerFunc
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
 			}{
 				path:      "/",
 				method:    http.MethodPost,
@@ -136,6 +178,38 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				body:   http.StatusText(http.StatusMethodNotAllowed),
 			},
 		},
+		{
+			desc: "_failure_request_method_not_allow_custom",
+			request: struct {
+				path   string
+				method string
+			}{
+				path:   "/",
+				method: http.MethodGet,
+			},
+			route: struct {
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
+			}{
+				path:      "/",
+				method:    http.MethodPost,
+				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
+				methodNotAllowed: func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusMethodNotAllowed)
+					w.Write([]byte("method_not_allowed_custom_handler"))
+				},
+			},
+			response: struct {
+				status int
+				body   string
+			}{
+				status: http.StatusMethodNotAllowed,
+				body:   "method_not_allowed_custom_handler",
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -143,6 +217,8 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			recorder := httptest.NewRecorder()
 
 			router := Router{}
+			router.NotFound(tC.route.notFound)
+			router.MethodNotAllowed(tC.route.methodNotAllowed)
 			if tC.route.handlerFn != nil {
 				router.Route(tC.route.path, tC.route.method, tC.route.handlerFn)
 			}

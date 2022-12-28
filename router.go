@@ -7,7 +7,9 @@ import (
 )
 
 type Router struct {
-	routes []route
+	routes           []route
+	notFound         http.HandlerFunc
+	methodNotAllowed http.HandlerFunc
 }
 
 func New() Router {
@@ -38,6 +40,14 @@ func (router *Router) Delete(path string, handlerFn http.HandlerFunc) {
 	router.Route(path, http.MethodDelete, handlerFn)
 }
 
+func (router *Router) NotFound(handlerFn http.HandlerFunc) {
+	router.notFound = handlerFn
+}
+
+func (router *Router) MethodNotAllowed(handlerFn http.HandlerFunc) {
+	router.methodNotAllowed = handlerFn
+}
+
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 	routeNotFound := true
@@ -65,9 +75,18 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if routeNotFound {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		if router.notFound != nil {
+			router.notFound(w, r)
+		} else {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		}
+
 		return
 	}
 
-	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	if router.methodNotAllowed != nil {
+		router.methodNotAllowed(w, r)
+	} else {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
 }
