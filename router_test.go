@@ -85,6 +85,32 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			},
 		},
 		{
+			desc: "_failure_request_route_not_found",
+			request: struct {
+				path   string
+				method string
+			}{
+				path:   "/invalid_route",
+				method: http.MethodGet,
+			},
+			route: struct {
+				path      string
+				method    string
+				handlerFn http.HandlerFunc
+			}{
+				path:      "/",
+				method:    http.MethodGet,
+				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
+			},
+			response: struct {
+				status int
+				body   string
+			}{
+				status: http.StatusNotFound,
+				body:   http.StatusText(http.StatusNotFound),
+			},
+		},
+		{
 			desc: "_failure_request_method_not_allow",
 			request: struct {
 				path   string

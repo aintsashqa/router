@@ -40,15 +40,16 @@ func (router *Router) Delete(path string, handlerFn http.HandlerFunc) {
 
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
+	routeNotFound := true
 
 	for _, route := range router.routes {
 		if !route.IsCurrentRoute(segments) {
 			continue
 		}
 
+		routeNotFound = false
 		if route.method != r.Method {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
+			continue
 		}
 
 		if len(route.segmentsKeys) == 0 {
@@ -62,4 +63,11 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		route.handlerFn(w, r)
 		return
 	}
+
+	if routeNotFound {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 }
