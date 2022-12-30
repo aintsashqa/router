@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,6 +21,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			handlerFn        http.HandlerFunc
 			notFound         http.HandlerFunc
 			methodNotAllowed http.HandlerFunc
+			middleware       []Middleware
 		}
 		response struct {
 			status int
@@ -41,6 +43,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				handlerFn        http.HandlerFunc
 				notFound         http.HandlerFunc
 				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
 			}{
 				path:   "/",
 				method: http.MethodGet,
@@ -58,6 +61,47 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			},
 		},
 		{
+			desc: "_success_request_method_use_middleware",
+			request: struct {
+				path   string
+				method string
+			}{
+				path:   "/",
+				method: http.MethodGet,
+			},
+			route: struct {
+				path             string
+				method           string
+				handlerFn        http.HandlerFunc
+				notFound         http.HandlerFunc
+				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
+			}{
+				path:   "/",
+				method: http.MethodGet,
+				handlerFn: func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte("from_middleware_" + r.Context().Value("middleware").(string)))
+				},
+				middleware: []Middleware{
+					func(next http.HandlerFunc) http.HandlerFunc {
+						return func(w http.ResponseWriter, r *http.Request) {
+							ctx := context.WithValue(r.Context(), "middleware", "value")
+							r = r.WithContext(ctx)
+							next(w, r)
+						}
+					},
+				},
+			},
+			response: struct {
+				status int
+				body   string
+			}{
+				status: http.StatusOK,
+				body:   "from_middleware_value",
+			},
+		},
+		{
 			desc: "_success_request_method_with_params",
 			request: struct {
 				path   string
@@ -72,6 +116,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				handlerFn        http.HandlerFunc
 				notFound         http.HandlerFunc
 				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
 			}{
 				path:   "/:parameter_key",
 				method: http.MethodGet,
@@ -105,6 +150,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				handlerFn        http.HandlerFunc
 				notFound         http.HandlerFunc
 				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodGet,
@@ -133,6 +179,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				handlerFn        http.HandlerFunc
 				notFound         http.HandlerFunc
 				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodGet,
@@ -165,6 +212,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				handlerFn        http.HandlerFunc
 				notFound         http.HandlerFunc
 				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodPost,
@@ -193,6 +241,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 				handlerFn        http.HandlerFunc
 				notFound         http.HandlerFunc
 				methodNotAllowed http.HandlerFunc
+				middleware       []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodPost,
@@ -219,6 +268,7 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			router := Router{}
 			router.NotFound(tC.route.notFound)
 			router.MethodNotAllowed(tC.route.methodNotAllowed)
+			router.Use(tC.route.middleware...)
 			if tC.route.handlerFn != nil {
 				router.Route(tC.route.path, tC.route.method, tC.route.handlerFn)
 			}

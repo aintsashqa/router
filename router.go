@@ -6,8 +6,11 @@ import (
 	"strings"
 )
 
+type Middleware func(http.HandlerFunc) http.HandlerFunc
+
 type Router struct {
 	routes           []route
+	middlewares      []Middleware
 	notFound         http.HandlerFunc
 	methodNotAllowed http.HandlerFunc
 }
@@ -18,6 +21,12 @@ func New() Router {
 
 func (router *Router) Route(path, method string, handlerFn http.HandlerFunc) {
 	router.routes = append(router.routes, newRoute(path, method, handlerFn))
+}
+
+func (router *Router) Use(middlewares ...Middleware) {
+	for _, middleware := range middlewares {
+		router.middlewares = append(router.middlewares, middleware)
+	}
 }
 
 func (router *Router) Get(path string, handlerFn http.HandlerFunc) {
@@ -48,6 +57,14 @@ func (router *Router) MethodNotAllowed(handlerFn http.HandlerFunc) {
 	router.methodNotAllowed = handlerFn
 }
 
+func (router *Router) execMiddlewares(handlerFn http.HandlerFunc) http.HandlerFunc {
+	for _, middleware := range router.middlewares {
+		handlerFn = middleware(handlerFn)
+	}
+
+	return handlerFn
+}
+
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 	routeNotFound := true
@@ -62,15 +79,16 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		handlerFn := router.execMiddlewares(route.handlerFn)
 		if len(route.segmentsKeys) == 0 {
-			route.handlerFn(w, r)
+			handlerFn(w, r)
 			return
 		}
 
 		params := route.GetPathParameters(segments)
 		r = r.WithContext(context.WithValue(r.Context(), _paramsCtxKey, params))
 
-		route.handlerFn(w, r)
+		handlerFn(w, r)
 		return
 	}
 
