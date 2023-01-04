@@ -1,19 +1,18 @@
 package router
 
 import (
-	"net/http"
 	"strings"
 )
 
 type route struct {
 	method        string
-	handlerFn     http.HandlerFunc
+	handlerFn     HandlerFunc
 	segments      []string
 	segmentsCount int
 	segmentsKeys  map[int]string
 }
 
-func newRoute(path, method string, handlerFn http.HandlerFunc) route {
+func newRoute(path, method string, handlerFn HandlerFunc) route {
 	segments := strings.Split(path, "/")
 
 	segmentsKeys := make(map[int]string)
@@ -46,11 +45,8 @@ func (r *route) IsCurrentRoute(segments []string) bool {
 	return true
 }
 
-func (r *route) GetPathParameters(segments []string) Params {
-	params := make(Params)
+func (r *route) GetPathParameters(params Params, segments []string) {
 	for i, k := range r.segmentsKeys {
 		params.append(k, segments[i])
 	}
-
-	return params
 }

@@ -7,7 +7,7 @@ import (
 
 func BenchmarkGetWithoutParams(b *testing.B) {
 	router := Router{}
-	router.Get("/foo", func(w http.ResponseWriter, r *http.Request) {})
+	router.Get("/foo", func(ctx *Context) error { return nil })
 
 	for i := 0; i < b.N; i++ {
 		request, _ := http.NewRequest(http.MethodGet, "/foo", nil)
@@ -18,7 +18,7 @@ func BenchmarkGetWithoutParams(b *testing.B) {
 
 func BenchmarkGetWithParams(b *testing.B) {
 	router := Router{}
-	router.Get("/foo/:baz", func(w http.ResponseWriter, r *http.Request) {})
+	router.Get("/foo/:baz", func(ctx *Context) error { return nil })
 
 	for i := 0; i < b.N; i++ {
 		request, _ := http.NewRequest(http.MethodGet, "/foo/baz", nil)

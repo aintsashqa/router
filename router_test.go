@@ -1,7 +1,6 @@
 package router
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,10 +17,9 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 		route struct {
 			path             string
 			method           string
-			handlerFn        http.HandlerFunc
-			notFound         http.HandlerFunc
-			methodNotAllowed http.HandlerFunc
-			middleware       []Middleware
+			handlerFn        HandlerFunc
+			errorHandlerFunc ErrorHandlerFunc
+			middlewares      []Middleware
 		}
 		response struct {
 			status int
@@ -40,16 +38,14 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:   "/",
 				method: http.MethodGet,
-				handlerFn: func(w http.ResponseWriter, _ *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("success"))
+				handlerFn: func(ctx *Context) error {
+					return ctx.Plain(http.StatusOK, "success")
 				},
 			},
 			response: struct {
@@ -72,23 +68,20 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:   "/",
 				method: http.MethodGet,
-				handlerFn: func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("from_middleware_" + r.Context().Value("middleware").(string)))
+				handlerFn: func(ctx *Context) error {
+					return ctx.Plain(http.StatusOK, "from_middleware_"+ctx.Context().Value("middleware").(string))
 				},
-				middleware: []Middleware{
-					func(next http.HandlerFunc) http.HandlerFunc {
-						return func(w http.ResponseWriter, r *http.Request) {
-							ctx := context.WithValue(r.Context(), "middleware", "value")
-							r = r.WithContext(ctx)
-							next(w, r)
+				middlewares: []Middleware{
+					func(next HandlerFunc) HandlerFunc {
+						return func(ctx *Context) error {
+							ctx.WithValue("middleware", "value")
+							return next(ctx)
 						}
 					},
 				},
@@ -113,18 +106,14 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:   "/:parameter_key",
 				method: http.MethodGet,
-				handlerFn: func(w http.ResponseWriter, r *http.Request) {
-					params := ParamsFromContext(r.Context())
-
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("parameter_key:" + params.Get("parameter_key")))
+				handlerFn: func(ctx *Context) error {
+					return ctx.Plain(http.StatusOK, "parameter_key:"+ctx.Param("parameter_key"))
 				},
 			},
 			response: struct {
@@ -147,21 +136,20 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodGet,
-				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
+				handlerFn: func(ctx *Context) error { return nil },
 			},
 			response: struct {
 				status int
 				body   string
 			}{
 				status: http.StatusNotFound,
-				body:   http.StatusText(http.StatusNotFound),
+				body:   ErrRouteNotFound.Error(),
 			},
 		},
 		{
@@ -176,17 +164,15 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodGet,
-				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
-				notFound: func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte("not_found_custom_handler"))
+				handlerFn: func(ctx *Context) error { return nil },
+				errorHandlerFunc: func(ctx *Context, err error) {
+					ctx.Plain(http.StatusNotFound, "not_found_custom_handler")
 				},
 			},
 			response: struct {
@@ -209,21 +195,20 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodPost,
-				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
+				handlerFn: func(ctx *Context) error { return nil },
 			},
 			response: struct {
 				status int
 				body   string
 			}{
 				status: http.StatusMethodNotAllowed,
-				body:   http.StatusText(http.StatusMethodNotAllowed),
+				body:   ErrMethodNotAllowed.Error(),
 			},
 		},
 		{
@@ -238,17 +223,15 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			route: struct {
 				path             string
 				method           string
-				handlerFn        http.HandlerFunc
-				notFound         http.HandlerFunc
-				methodNotAllowed http.HandlerFunc
-				middleware       []Middleware
+				handlerFn        HandlerFunc
+				errorHandlerFunc ErrorHandlerFunc
+				middlewares      []Middleware
 			}{
 				path:      "/",
 				method:    http.MethodPost,
-				handlerFn: func(w http.ResponseWriter, r *http.Request) {},
-				methodNotAllowed: func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusMethodNotAllowed)
-					w.Write([]byte("method_not_allowed_custom_handler"))
+				handlerFn: func(ctx *Context) error { return nil },
+				errorHandlerFunc: func(ctx *Context, err error) {
+					ctx.Plain(http.StatusMethodNotAllowed, "method_not_allowed_custom_handler")
 				},
 			},
 			response: struct {
@@ -265,10 +248,12 @@ func TestRouterFuncServeHTTP(t *testing.T) {
 			request := httptest.NewRequest(tC.request.method, tC.request.path, nil)
 			recorder := httptest.NewRecorder()
 
-			router := Router{}
-			router.NotFound(tC.route.notFound)
-			router.MethodNotAllowed(tC.route.methodNotAllowed)
-			router.Use(tC.route.middleware...)
+			router := New()
+			if tC.route.errorHandlerFunc != nil {
+				router.ErrorHandlerFunc = tC.route.errorHandlerFunc
+			}
+
+			router.Use(tC.route.middlewares...)
 			if tC.route.handlerFn != nil {
 				router.Route(tC.route.path, tC.route.method, tC.route.handlerFn)
 			}

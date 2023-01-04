@@ -85,11 +85,12 @@ func TestRouteFuncGetPathParameters(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			route := newRoute(tC.path, "", nil)
+			params := make(Params)
 
-			result := route.GetPathParameters(strings.Split(tC.input, "/"))
+			route.GetPathParameters(params, strings.Split(tC.input, "/"))
 
 			for key, expectValue := range tC.result {
-				actualValue, found := result[key]
+				actualValue, found := params[key]
 				if !found {
 					t.Errorf("expected key '%s' not found", key)
 				}
