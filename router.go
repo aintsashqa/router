@@ -26,7 +26,7 @@ func DefaultErrorHandlerFunc(ctx *Context, err error) {
 	}
 
 	switch err {
-	case ErrUnsupportedContentType:
+	case ErrUnsupportedMediaType:
 		ctx.Plain(http.StatusUnsupportedMediaType, http.StatusText(http.StatusUnsupportedMediaType))
 		break
 

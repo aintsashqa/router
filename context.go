@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	ErrUnsupportedContentType error = errors.New("unsupported content type")
+	ErrUnsupportedMediaType error = errors.New(http.StatusText(http.StatusUnsupportedMediaType))
 )
 
 type Context struct {
@@ -57,7 +57,7 @@ func (c *Context) Query(key string) string {
 func (c *Context) ParseJson(v any) error {
 	contentType := c.request.Header.Get(headerContentType)
 	if !strings.Contains(contentType, contentTypeJson) {
-		return ErrUnsupportedContentType
+		return ErrUnsupportedMediaType
 	}
 
 	return json.NewDecoder(c.request.Body).Decode(v)
